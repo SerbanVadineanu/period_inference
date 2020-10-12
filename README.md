@@ -38,6 +38,14 @@ Randomly generates a set of traces according to the user's specifications. The r
   * **yes** for preemptive execution.
   * **no** for non-preemptive execution.
 
+### Output format
+
+|Trace|Periods|
+|---|---|
+|'[1, 1, 1, 2, 3, 3, 0, 0, 1, 1, 1, 2, 3, 3]'|'[8, 9, 10]'|
+
+Both the trace and the task periods are saved as strings representing lists such that they can be easily parsed when read by the [Feature extractor](#feature-extractor).
+
 ### Example
 ` python trace_generation.py automotive 300 4 0.7 0 0 yes `
 
@@ -65,6 +73,12 @@ Receives as input a set of traces under the format specified in [Trace generator
 
 The script will generate a csv file containing the features extracted from the projection of each task from each trace.
 Also, the resulted file will contain the lower bound and the upper bound required to use the space prunning method.
+
+### Output format
+
+|Top1_periodogram|Top2_periodogram|...|Top20_periodogram|Top1_autocorrelation|...|Top20_autocorrelation|Lower_bound|Upper_bound|True_period|
+|---|---|---|---|---|---|---|---|---|---|
+|1000.0|500.0|...|43.0|2000.0|...|20000.0|392.0|2000.0|1000.0|
 
 ### Example
 `python feature_extraction.py python feature_extraction.py /Users/myuser/period_inference/IDEAL_automotive_4_tasks_0.7_utilization_1602426197.csv 20 yes`
@@ -102,6 +116,12 @@ The csv will include 3 columns:
 * *RPM*: the predictions coming directly from the regression algorithms
 * *RPMPA*: the predictions from the period adjustment step
 * *SPM*: the predictions from the space prunning method
+
+### Output format
+
+|RPM|RPMPA|SPM|
+|---|---|---|
+|999.99|1000|1000|
 
 ### Example
 
