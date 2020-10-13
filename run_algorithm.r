@@ -9,6 +9,19 @@ library(pryr)
 library(caret)
 library(extraTrees)
 
+combined_predict <- function(df_features, predictions) {
+  y_pa <- double(length(predictions))
+  for (row in 1:nrow(df_features)) {
+    
+    features <- unique(as.integer(df_features[row, ]))
+    
+    # Period adjustment method (RPMPA)
+    y_pa[row] = features[which.min(abs(features - predictions[row]))]
+  }
+  
+  return (y_pa)
+}
+
 combined_predict_limits <- function(df_features, predictions, lower_bound, upper_bound) {
   y_pa <- double(length(predictions))
   y_spm <- double(length(predictions))
@@ -19,8 +32,9 @@ combined_predict_limits <- function(df_features, predictions, lower_bound, upper
 
     # Period adjustment method (RPMPA)
     y_pa[row] = features[which.min(abs(features - predictions[row]))]
-
-    # Space prunning method (SPM)
+    
+    
+    # Space pruning method (SPM)
     selected = c()
     for (f in features) {
       if(f >= lower_bound[row] && f <= upper_bound[row]) {
@@ -34,16 +48,14 @@ combined_predict_limits <- function(df_features, predictions, lower_bound, upper
     }
   }
 
-  return(list(y_pa=y_pa, y_spm=y_spm))
-
+  return (list(y_pa=y_pa, y_spm=y_spm))
 }
 
-run_algorithm <- function (algorithm, dataset_path, model_path) {
+run_algorithm <- function (algorithm, dataset_path, model_path, features_regression, features_adjustment, use_spm) {
   # Read the data
   data <- read.csv(dataset_path)
-  X <- select(data,
-              Top1_periodogram, Top2_periodogram, Top3_periodogram,
-              Top1_autocorrelation, Top2_autocorrelation, Top3_autocorrelation)
+  cols <- c(1:features_regression, (features_adjustment + 1):(features_adjustment+features_regression))
+  X <- data[, cols]
 
   # If no model path is given then we assume training
   if (is.null(model_path)) {
@@ -89,18 +101,29 @@ run_algorithm <- function (algorithm, dataset_path, model_path) {
       y_pred <- predict(model, newdata = X)
     }
 
-    # Select first 40 columns corresponding to the 20 features from periodogram and autocorrelation
-    data %>% select(1:40)
-    lower_bound <- select(data, Lower_bound)[,]
-    upper_bound <- select(data, Upper_bound)[,]
-    combined_results <- combined_predict_limits(data, y_pred, lower_bound, upper_bound)
-    # Results from the period adjustment step
-    y_pa <- combined_results$y_pa
-    # Results from the space prunning method
-    y_spm <- combined_results$y_spm
-
-    columns <- c('RPM', 'RPMPA', 'SPM')
-    predictions_df <- data.frame(y_pred, y_pa, y_spm)
+    # Select first columns corresponding to the features from periodogram and autocorrelation
+    cols <- 1:(2*features_adjustment)
+    data %>% select(all_of(cols))
+    if (identical(use_spm, "yes")) {
+      lower_bound <- select(data, Lower_bound)[,]
+      upper_bound <- select(data, Upper_bound)[,]
+      
+      combined_results <- combined_predict_limits(data, y_pred, lower_bound, upper_bound)
+      # Results from the period adjustment step
+      y_pa <- combined_results$y_pa
+      # Results from the space pruning method
+      y_spm <- combined_results$y_spm
+      
+      columns <- c('RPM', 'RPMPA', 'SPM')
+      predictions_df <- data.frame(y_pred, y_pa, y_spm)
+    } else {
+      # Results from the period adjustment step
+      y_pa <- combined_predict(data, y_pred)
+      
+      columns <- c('RPM', 'RPMPA')
+      predictions_df <- data.frame(y_pred, y_pa)
+    }
+    
     colnames(predictions_df) <- columns
 
     write.csv(predictions_df, paste0('predictions_', algorithm, '.csv'),
@@ -113,10 +136,15 @@ args = commandArgs(trailingOnly = TRUE)
 
 algorithm = args[1]
 dataset_path = args[2]
+features_regression = as.numeric(args[3])
+features_adjustment = as.numeric(args[4])
+use_spm = NULL
 model_path = NULL
 
-if (length(args) == 3){
-  model_path = args[3]
+if (length(args) == 6){
+  use_spm = args[5]
+  model_path = args[6]
 }
 
-run_algorithm(algorithm, dataset_path, model_path)
+run_algorithm(algorithm, dataset_path, model_path,
+              features_regression, features_adjustment, use_spm)
