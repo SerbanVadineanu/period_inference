@@ -72,7 +72,7 @@ Receives as input a set of traces under the format specified in [Trace generator
   * **no** for creating a set of features for prediction. Here, the true periods may be omitted.
 
 The script will generate a csv file containing the features extracted from the projection of each task from each trace.
-Also, the resulted file will contain the lower bound and the upper bound required to use the space prunning method.
+Also, the resulted file will contain the lower bound and the upper bound required to use the space pruning method.
 
 ### Output format
 
@@ -99,7 +99,7 @@ Receives as input a set of features and generates either a trained model or a se
 * bartMachine library version: 1.2.4.2
 
 ### Usage
-` Rscript run_algorithm.r [algorithm] [path to dataset] [path to model]`
+` Rscript run_algorithm.r [algorithm] [path to dataset] [no features regression] [no features period adjustment] [use spm] [path to model]`
 
 * *algorithm*: the regression algorithm to be used.
   * **cubist** [2]
@@ -107,15 +107,22 @@ Receives as input a set of features and generates either a trained model or a se
   * **gbm** [4]
   * **bartMachine** [5]
 * *path to dataset*: the path to the data set containing the features to be used either for training or for prediction
+* *no features regression*: the number of features from each signal processing technique used for training the regression model.
+* *no features period adjustment*: the number of features from each signal processing technique used for performing the period adjustment step.
+* *use spm*: whether or not to use the space pruning method.
+  * **yes** for using the space pruning method. Here, the input data set must contain the *Lower_bound* and *Upper_bound* columns specified in this order after the columns with features.
+  * **no** the script will only perform the period adjustment step.
 * *path to model*: the path to the trained regression model. In case of training this argument **should not** be introduced.
+
+**NOTE:** The total numnber of features in the data set must be 2 x *no features period adjustment*.
 
 When training, the result will be a rds file with the following naming format: `model_[algorithm].rds`.
 
 When predicting, the result will be a csv file containing the predicted period for each task represented by its set of features. 
 The csv will include 3 columns:
-* *RPM*: the predictions coming directly from the regression algorithms
-* *RPMPA*: the predictions from the period adjustment step
-* *SPM*: the predictions from the space prunning method
+* *RPM*: the predictions coming directly from the regression algorithms.
+* *RPMPA*: the predictions from the period adjustment step.
+* *SPM (optional)*: the predictions from the space pruning method.
 
 ### Output format
 
@@ -125,8 +132,13 @@ The csv will include 3 columns:
 
 ### Example
 
-* Training: `Rscript run_algorithm.r cubist /Users/myuser/period_inference/features_training_1602426752.csv`
-* Predicting: `Rscript run_algorithm.r cubist /Users/myuser/period_inference/features_testing_1602426752.csv /Users/myuser/period_inference/model_cubist.rds`
+* Training: `Rscript run_algorithm.r cubist /Users/myuser/period_inference/features_training_1602426752.csv 3 20 `
+
+The model will be created using 6 features in total: top 3 periods from periodogram and top 3 features from autocorrelation.
+
+* Predicting: `Rscript run_algorithm.r cubist /Users/myuser/period_inference/features_testing_1602426752.csv 3 20 yes /Users/myuser/period_inference/model_cubist.rds`
+
+The predictions will include the results from space pruning too.
 
 ## Bibliography
 [1] Kramer, S., Ziegenbein, D., & Hamann, A. (2015, July). Real world automotive benchmarks for free. In 6th International Workshop on Analysis Tools and Methodologies for Embedded and Real-time Systems (WATERS).
